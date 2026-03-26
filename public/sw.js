@@ -9,7 +9,7 @@
  * Bump VERSION when deploying a new build so old caches are pruned.
  */
 
-const VERSION   = 'v2'
+const VERSION   = 'v3'
 const CACHE     = `wine-scanner-${VERSION}`
 const SHELL_URL = '/'
 
