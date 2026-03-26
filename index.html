@@ -177,16 +177,23 @@
 
         <!-- Camera Capture -->
         <div class="bg-white p-4 rounded-lg shadow-sm mb-4">
-            <label for="cameraInput" class="block text-sm font-medium text-gray-700 mb-2">
-                Capture Label
+            <label for="cameraInput"
+                   class="flex items-center justify-center gap-2 w-full py-3 px-4
+                          bg-red-900 text-white font-semibold text-sm rounded-md
+                          active:bg-red-800 cursor-pointer select-none">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                     viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0
+                             0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0
+                             0118.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0
+                             01-2-2V9z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Take Photo
             </label>
-            <input type="file" accept="image/*" capture="environment" id="cameraInput"
-                   class="block w-full text-sm text-gray-500
-                          file:mr-4 file:py-2.5 file:px-4
-                          file:rounded-md file:border-0
-                          file:text-sm file:font-semibold
-                          file:bg-red-50 file:text-red-900
-                          active:file:bg-red-100" />
+            <input type="file" accept="image/*" capture="environment" id="cameraInput" class="hidden" />
             <img id="imagePreview" class="mt-4 w-full rounded-md hidden object-cover max-h-64" alt="Label Preview" />
         </div>
 
@@ -263,6 +270,10 @@
                        class="block w-full border border-gray-300 rounded-md p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-900">
             </div>
 
+            <p class="text-xs text-gray-400 text-center -mt-1">
+                Saving to: <span id="activeCellarLabel" class="font-medium text-gray-600"></span>
+            </p>
+
             <button type="submit" id="saveButton"
                     class="w-full bg-red-900 text-white font-bold py-3.5 rounded-md active:bg-red-800 text-base">
                 Save Wine
@@ -294,7 +305,25 @@
     <div id="cellarPanel" class="hidden scroll-content safe-top max-w-md mx-auto p-4">
 
         <div class="flex items-center justify-between mb-4">
-            <h1 class="text-2xl font-bold text-red-900">My Cellar</h1>
+            <div class="flex items-center gap-2 min-w-0">
+                <select id="cellarSelect"
+                        class="text-lg font-bold text-red-900 bg-transparent border-none
+                               focus:outline-none focus:ring-0 max-w-[160px] truncate"></select>
+                <button id="addCellarBtn" aria-label="New cellar"
+                        class="shrink-0 w-7 h-7 flex items-center justify-center rounded-full
+                               bg-red-100 text-red-900 font-bold text-lg active:bg-red-200">+</button>
+                <button id="deleteCellarBtn" aria-label="Delete cellar"
+                        class="shrink-0 w-7 h-7 flex items-center justify-center rounded-full
+                               bg-gray-100 text-gray-500 active:bg-gray-200 disabled:opacity-30">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                         viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0
+                                 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0
+                                 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                </button>
+            </div>
             <button id="exportBtn"
                     class="flex items-center gap-1.5 text-sm font-semibold text-red-900
                            border border-red-200 rounded-lg px-3 py-2 active:bg-red-50

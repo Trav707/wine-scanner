@@ -1,5 +1,7 @@
-const WINES_KEY = 'wine_cellar_v1'
-const API_KEY_KEY = 'gemini_api_key'
+const WINES_KEY         = 'wine_cellar_v1'   // legacy key — used by the 'default' cellar
+const API_KEY_KEY       = 'gemini_api_key'
+const CELLARS_KEY       = 'wine_cellars'
+const ACTIVE_CELLAR_KEY = 'active_cellar'
 
 // --- API Key ---
 
@@ -11,18 +13,63 @@ export function saveApiKey(key) {
   localStorage.setItem(API_KEY_KEY, key.trim())
 }
 
+// --- Cellar management ---
+
+export function loadCellars() {
+  try {
+    return JSON.parse(localStorage.getItem(CELLARS_KEY)) || [{ id: 'default', name: 'My Cellar' }]
+  } catch {
+    return [{ id: 'default', name: 'My Cellar' }]
+  }
+}
+
+export function addCellar(name) {
+  const cellars = loadCellars()
+  const id = 'c_' + Date.now()
+  cellars.push({ id, name: name.trim() })
+  localStorage.setItem(CELLARS_KEY, JSON.stringify(cellars))
+  return id
+}
+
+export function deleteCellar(id) {
+  let cellars = loadCellars()
+  if (cellars.length <= 1) return false
+  cellars = cellars.filter(c => c.id !== id)
+  localStorage.setItem(CELLARS_KEY, JSON.stringify(cellars))
+  localStorage.removeItem(getCellarKey(id))
+  return true
+}
+
+export function getActiveCellarId() {
+  return localStorage.getItem(ACTIVE_CELLAR_KEY) || 'default'
+}
+
+export function setActiveCellarId(id) {
+  localStorage.setItem(ACTIVE_CELLAR_KEY, id)
+}
+
+// --- Internal helpers ---
+
+function getCellarKey(id) {
+  return id === 'default' ? WINES_KEY : 'wine_cellar_' + id
+}
+
+function activeKey() {
+  return getCellarKey(getActiveCellarId())
+}
+
 // --- Wine CRUD ---
 
 export function loadWines() {
   try {
-    return JSON.parse(localStorage.getItem(WINES_KEY) || '[]')
+    return JSON.parse(localStorage.getItem(activeKey()) || '[]')
   } catch {
     return []
   }
 }
 
 function persistWines(wines) {
-  localStorage.setItem(WINES_KEY, JSON.stringify(wines))
+  localStorage.setItem(activeKey(), JSON.stringify(wines))
 }
 
 function normalize(str) {
@@ -30,14 +77,13 @@ function normalize(str) {
 }
 
 // Two wines are duplicates if producer + varietal + appellation + vineyard + vintage all match.
-// Vintage is included so a 2019 and 2021 of the same wine are treated as distinct bottles.
 function isDuplicate(existing, incoming) {
   return (
-    normalize(existing.producer) === normalize(incoming.producer) &&
-    normalize(existing.varietal) === normalize(incoming.varietal) &&
+    normalize(existing.producer)    === normalize(incoming.producer)    &&
+    normalize(existing.varietal)    === normalize(incoming.varietal)    &&
     normalize(existing.appellation) === normalize(incoming.appellation) &&
-    normalize(existing.vineyard) === normalize(incoming.vineyard) &&
-    normalize(existing.vintage) === normalize(incoming.vintage)
+    normalize(existing.vineyard)    === normalize(incoming.vineyard)    &&
+    normalize(existing.vintage)     === normalize(incoming.vintage)
   )
 }
 

@@ -1,5 +1,6 @@
 import { extractWineLabel } from './gemini.js'
-import { getApiKey, saveApiKey, saveWine, updateWine, deleteWine, loadWines } from './store.js'
+import { getApiKey, saveApiKey, saveWine, updateWine, deleteWine, loadWines,
+         loadCellars, addCellar, deleteCellar, getActiveCellarId, setActiveCellarId } from './store.js'
 import { formatCardData, sortAndFilterWines } from './utils.js'
 import { exportToXlsx } from './export.js'
 import { initPwa } from './pwa.js'
@@ -49,6 +50,11 @@ const darkModeBtn       = document.getElementById('darkModeBtn')
 const iconSun           = document.getElementById('iconSun')
 const iconMoon          = document.getElementById('iconMoon')
 
+const cellarSelect      = document.getElementById('cellarSelect')
+const addCellarBtn      = document.getElementById('addCellarBtn')
+const deleteCellarBtn   = document.getElementById('deleteCellarBtn')
+const activeCellarLabel = document.getElementById('activeCellarLabel')
+
 const FORM_FIELDS = [
   'producer', 'vintage', 'varietal', 'bottleSize', 'wineType',
   'appellation', 'subAppellation', 'vineyard', 'proprietaryName', 'quantity'
@@ -93,6 +99,12 @@ function init() {
   // Dark mode
   initDarkMode()
   darkModeBtn.addEventListener('click', toggleDarkMode)
+
+  // Cellars
+  cellarSelect.addEventListener('change', handleCellarSwitch)
+  addCellarBtn.addEventListener('click', handleAddCellar)
+  deleteCellarBtn.addEventListener('click', handleDeleteCellar)
+  renderCellarSelector()
 
   initPwa()
 
@@ -277,6 +289,49 @@ function handleFilterClick(e) {
     p.classList.toggle('text-gray-600', !isActive)
   })
   renderCellar()
+}
+
+// ── Cellar management ─────────────────────────────────────────────────────────
+function renderCellarSelector() {
+  const cellars  = loadCellars()
+  const activeId = getActiveCellarId()
+  cellarSelect.innerHTML = cellars
+    .map(c => `<option value="${c.id}"${c.id === activeId ? ' selected' : ''}>${c.name}</option>`)
+    .join('')
+  deleteCellarBtn.disabled = cellars.length <= 1
+  const activeName = cellars.find(c => c.id === activeId)?.name || 'My Cellar'
+  if (activeCellarLabel) activeCellarLabel.textContent = activeName
+}
+
+function handleCellarSwitch(e) {
+  setActiveCellarId(e.target.value)
+  renderCellarSelector()
+  renderCellar()
+  updateBadge()
+}
+
+function handleAddCellar() {
+  const name = prompt('New cellar name:')
+  if (!name?.trim()) return
+  const id = addCellar(name.trim())
+  setActiveCellarId(id)
+  renderCellarSelector()
+  renderCellar()
+  updateBadge()
+}
+
+function handleDeleteCellar() {
+  const cellars  = loadCellars()
+  if (cellars.length <= 1) return
+  const activeId = getActiveCellarId()
+  const cellar   = cellars.find(c => c.id === activeId)
+  if (!confirm(`Delete "${cellar?.name}" and all its wines? This cannot be undone.`)) return
+  deleteCellar(activeId)
+  const remaining = loadCellars()
+  setActiveCellarId(remaining[0].id)
+  renderCellarSelector()
+  renderCellar()
+  updateBadge()
 }
 
 // ── Dark mode ─────────────────────────────────────────────────────────────────
