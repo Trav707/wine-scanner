@@ -144,7 +144,7 @@ async function handlePhotoCapture(event) {
     } else if (msg.startsWith('RATE_LIMIT:')) {
       showError(msg.replace('RATE_LIMIT: ', ''))
     } else {
-      showError("Couldn't read the label. Try retaking the photo with better lighting.")
+      showError("Couldn't read the label. Error: " + (err.message || 'Unknown error'))
     }
   } finally {
     setLoading(false)
