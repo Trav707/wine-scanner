@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Wine Scanner</title>
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="theme-color" content="#7f1d1d">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Wine Scanner">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <style>
+        /* Respect iPhone home indicator */
+        .tab-bar { padding-bottom: max(env(safe-area-inset-bottom), 8px); }
+        /* Prevent content from hiding behind fixed tab bar */
+        .scroll-content { padding-bottom: 80px; }
+        /* Hide scrollbar on filter pill row */
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        /* Dark mode overrides — keeps all Tailwind utility classes intact */
+        html.dark body                   { background-color: #111827; color: #f9fafb; }
+        html.dark .bg-white              { background-color: #1f2937; }
+        html.dark .bg-gray-100           { background-color: #111827; }
+        html.dark .bg-gray-50            { background-color: #1f2937; }
+        html.dark .text-gray-800         { color: #f9fafb; }
+        html.dark .text-gray-700         { color: #d1d5db; }
+        html.dark .text-gray-600         { color: #9ca3af; }
+        html.dark .text-gray-500         { color: #6b7280; }
+        html.dark .text-gray-400         { color: #4b5563; }
+        html.dark .border-gray-300       { border-color: #374151; }
+        html.dark .border-gray-200       { border-color: #374151; }
+        html.dark .border-gray-100       { border-color: #374151; }
+        html.dark .divide-gray-200 > *   { border-color: #374151; }
+        html.dark input,
+        html.dark select,
+        html.dark textarea               { background-color: #374151 !important; color: #f9fafb !important; border-color: #4b5563 !important; }
+        html.dark nav.tab-bar            { background-color: #1f2937; border-color: #374151; }
+        html.dark .shadow-sm             { box-shadow: none; }
+        html.dark .shadow-md             { box-shadow: none; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 antialiased">
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex flex-col items-center justify-center">
+        <div class="animate-spin rounded-full h-16 w-16 border-4 border-white border-t-transparent mb-4"></div>
+        <p class="text-white text-lg font-semibold">Reading label…</p>
+    </div>
+
+    <!-- ── INSTALL BANNER ──────────────────────────────────────────── -->
+    <!--
+      Shown on first visit when the app is not already installed.
+      iOS: shows manual share-sheet instructions.
+      Android/Chrome: shows a native install button (via beforeinstallprompt).
+    -->
+    <div id="installBanner"
+         class="hidden max-w-md mx-auto px-4 pt-3">
+        <div class="bg-red-900 text-white rounded-lg p-4 flex items-start gap-3 shadow-md">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 mt-0.5 opacity-90" fill="none"
+                 viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0
+                         00-2 2v14a2 2 0 002 2z" />
+            </svg>
+            <div class="flex-1">
+                <!-- iOS instructions -->
+                <div id="iosInstallHint">
+                    <p class="font-semibold text-sm">Add to Home Screen</p>
+                    <p class="text-xs opacity-80 mt-0.5">
+                        Tap <strong>Share</strong> <span class="inline-block">&#x23F6;</span>
+                        then <strong>Add to Home Screen</strong> to use Wine Scanner as an app.
+                    </p>
+                </div>
+                <!-- Android / Chrome install button (hidden until beforeinstallprompt fires) -->
+                <div id="androidInstallHint" class="hidden">
+                    <p class="font-semibold text-sm">Install Wine Scanner</p>
+                    <button id="installBtn"
+                            class="mt-1.5 bg-white text-red-900 text-xs font-bold px-3 py-1.5 rounded-md active:opacity-80">
+                        Install App
+                    </button>
+                </div>
+            </div>
+            <button id="dismissInstallBtn" aria-label="Dismiss"
+                    class="shrink-0 opacity-70 hover:opacity-100 transition text-lg leading-none">
+                ✕
+            </button>
+        </div>
+    </div>
+
+    <!-- ── SCAN TAB ─────────────────────────────────────────────────── -->
+    <div id="scanPanel" class="scroll-content max-w-md mx-auto p-4">
+
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-4">
+            <h1 class="text-2xl font-bold text-red-900">Wine Scanner</h1>
+            <div class="flex items-center gap-1">
+            <button id="darkModeBtn" aria-label="Toggle dark mode"
+                    class="p-2 rounded-full hover:bg-gray-200 active:bg-gray-300 transition">
+                <!-- Sun icon (shown in dark mode) -->
+                <svg id="iconSun" xmlns="http://www.w3.org/2000/svg" class="hidden h-6 w-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343
+                             17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707
+                             M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+                </svg>
+                <!-- Moon icon (shown in light mode) -->
+                <svg id="iconMoon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003
+                             9.003 0 008.354-5.646z"/>
+                </svg>
+            </button>
+            <button id="settingsBtn" aria-label="Settings"
+                    class="p-2 rounded-full hover:bg-gray-200 active:bg-gray-300 transition">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none"
+                     viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0
+                             002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0
+                             001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0
+                             00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0
+                             00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0
+                             00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0
+                             00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0
+                             001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07
+                             2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            </button>
+            </div><!-- /header button group -->
+        </div>
+
+        <!-- Settings Panel -->
+        <div id="settingsPanel" class="hidden bg-white p-4 rounded-lg shadow-sm mb-4 border-l-4 border-red-900">
+            <h2 class="text-sm font-semibold text-gray-700 mb-3">Gemini API Key</h2>
+            <input type="password" id="apiKeyInput" placeholder="AIza…"
+                   class="block w-full border border-gray-300 rounded-md p-2 text-sm font-mono mb-3 focus:outline-none focus:ring-2 focus:ring-red-900">
+            <div class="flex gap-2">
+                <button id="saveKeyBtn"
+                        class="flex-1 bg-red-900 text-white text-sm font-semibold py-2.5 rounded-md active:bg-red-800">
+                    Save Key
+                </button>
+                <button id="cancelSettingsBtn"
+                        class="flex-1 bg-gray-100 text-gray-700 text-sm font-semibold py-2.5 rounded-md active:bg-gray-200">
+                    Cancel
+                </button>
+            </div>
+            <p class="text-xs text-gray-400 mt-2">Stored only on this device. Never sent anywhere except Google's API.</p>
+        </div>
+
+        <!-- Edit Mode Banner -->
+        <div id="editBanner" class="hidden bg-amber-50 border border-amber-300 text-amber-900 text-sm p-3 rounded-lg mb-4 flex items-center justify-between">
+            <span class="font-medium">Editing: <span id="editBannerName" class="font-bold"></span></span>
+            <button id="cancelEditBtn" class="text-amber-700 font-semibold text-xs underline ml-2 shrink-0">
+                Cancel
+            </button>
+        </div>
+
+        <!-- Error Banner -->
+        <div id="errorBanner" class="hidden bg-red-50 border border-red-200 text-red-800 text-sm p-3 rounded-lg mb-4 flex items-start gap-2">
+            <span class="font-bold shrink-0 mt-0.5">!</span>
+            <span id="errorMessage"></span>
+        </div>
+
+        <!-- Success Banner -->
+        <div id="successBanner" class="hidden bg-green-50 border border-green-200 text-green-800 text-sm p-3 rounded-lg mb-4">
+            <span id="successMessage"></span>
+        </div>
+
+        <!-- Camera Capture -->
+        <div class="bg-white p-4 rounded-lg shadow-sm mb-4">
+            <label for="cameraInput" class="block text-sm font-medium text-gray-700 mb-2">
+                Capture Label
+            </label>
+            <input type="file" accept="image/*" capture="environment" id="cameraInput"
+                   class="block w-full text-sm text-gray-500
+                          file:mr-4 file:py-2.5 file:px-4
+                          file:rounded-md file:border-0
+                          file:text-sm file:font-semibold
+                          file:bg-red-50 file:text-red-900
+                          active:file:bg-red-100" />
+            <img id="imagePreview" class="mt-4 w-full rounded-md hidden object-cover max-h-64" alt="Label Preview" />
+        </div>
+
+        <!-- Wine Data Form -->
+        <form id="wineForm" class="bg-white p-4 rounded-lg shadow-sm space-y-4">
+            <h2 class="text-lg font-semibold border-b pb-2">Wine Details</h2>
+
+            <div>
+                <label for="producer" class="block text-xs font-medium text-gray-600 mb-1">Producer</label>
+                <input type="text" id="producer" name="producer"
+                       class="block w-full border border-gray-300 rounded-md p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-900">
+            </div>
+
+            <div>
+                <label for="vintage" class="block text-xs font-medium text-gray-600 mb-1">Vintage</label>
+                <input type="text" id="vintage" name="vintage" placeholder="e.g. 2019 or NV"
+                       class="block w-full border border-gray-300 rounded-md p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-900">
+            </div>
+
+            <div>
+                <label for="varietal" class="block text-xs font-medium text-gray-600 mb-1">Varietal</label>
+                <input type="text" id="varietal" name="varietal"
+                       class="block w-full border border-gray-300 rounded-md p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-900">
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label for="bottleSize" class="block text-xs font-medium text-gray-600 mb-1">Bottle Size</label>
+                    <input type="text" id="bottleSize" name="bottleSize" placeholder="750ml"
+                           class="block w-full border border-gray-300 rounded-md p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-900">
+                </div>
+                <div>
+                    <label for="wineType" class="block text-xs font-medium text-gray-600 mb-1">Wine Type</label>
+                    <select id="wineType" name="wineType"
+                            class="block w-full border border-gray-300 rounded-md p-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-red-900">
+                        <option value="">-- Select --</option>
+                        <option>Red</option>
+                        <option>White</option>
+                        <option>Rosé</option>
+                        <option>Sparkling</option>
+                        <option>Dessert</option>
+                        <option>Orange</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label for="appellation" class="block text-xs font-medium text-gray-600 mb-1">Appellation</label>
+                <input type="text" id="appellation" name="appellation"
+                       class="block w-full border border-gray-300 rounded-md p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-900">
+            </div>
+
+            <div>
+                <label for="subAppellation" class="block text-xs font-medium text-gray-600 mb-1">Sub Appellation</label>
+                <input type="text" id="subAppellation" name="subAppellation"
+                       class="block w-full border border-gray-300 rounded-md p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-900">
+            </div>
+
+            <div>
+                <label for="vineyard" class="block text-xs font-medium text-gray-600 mb-1">Vineyard Designate</label>
+                <input type="text" id="vineyard" name="vineyard"
+                       class="block w-full border border-gray-300 rounded-md p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-900">
+            </div>
+
+            <div>
+                <label for="proprietaryName" class="block text-xs font-medium text-gray-600 mb-1">Proprietary Name</label>
+                <input type="text" id="proprietaryName" name="proprietaryName"
+                       class="block w-full border border-gray-300 rounded-md p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-900">
+            </div>
+
+            <div>
+                <label for="quantity" class="block text-xs font-medium text-gray-600 mb-1">Quantity</label>
+                <input type="number" id="quantity" name="quantity" value="1" min="1"
+                       class="block w-full border border-gray-300 rounded-md p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-900">
+            </div>
+
+            <button type="submit" id="saveButton"
+                    class="w-full bg-red-900 text-white font-bold py-3.5 rounded-md active:bg-red-800 text-base">
+                Save Wine
+            </button>
+
+            <!-- Delete section — only visible in edit mode -->
+            <div id="deleteSection" class="hidden pt-2 border-t border-gray-100 space-y-2">
+                <!-- Confirm prompt — shown after tapping Delete -->
+                <div id="deleteConfirmRow" class="hidden flex gap-2">
+                    <button type="button" id="confirmDeleteBtn"
+                            class="flex-1 bg-red-600 text-white text-sm font-semibold py-2.5 rounded-md active:bg-red-700">
+                        Yes, Delete Wine
+                    </button>
+                    <button type="button" id="cancelDeleteBtn"
+                            class="flex-1 bg-gray-100 text-gray-700 text-sm font-semibold py-2.5 rounded-md active:bg-gray-200">
+                        Keep It
+                    </button>
+                </div>
+                <button type="button" id="deleteBtn"
+                        class="w-full border border-red-300 text-red-700 text-sm font-semibold py-2.5 rounded-md active:bg-red-50">
+                    Delete Wine
+                </button>
+            </div>
+        </form>
+
+    </div><!-- /scanPanel -->
+
+    <!-- ── CELLAR TAB ────────────────────────────────────────────────── -->
+    <div id="cellarPanel" class="hidden scroll-content max-w-md mx-auto p-4">
+
+        <div class="flex items-center justify-between mb-4">
+            <h1 class="text-2xl font-bold text-red-900">My Cellar</h1>
+            <button id="exportBtn"
+                    class="flex items-center gap-1.5 text-sm font-semibold text-red-900
+                           border border-red-200 rounded-lg px-3 py-2 active:bg-red-50
+                           disabled:opacity-40 disabled:pointer-events-none"
+                    disabled>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                     viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0
+                             0l-4-4m4 4V4" />
+                </svg>
+                Export .xlsx
+            </button>
+        </div>
+
+        <!-- Sort / Filter bar -->
+        <div class="mb-4 space-y-2">
+            <!-- Type filter pills -->
+            <div id="filterBar" class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                <button class="filter-pill shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full
+                               bg-red-900 text-white" data-type="">All</button>
+                <button class="filter-pill shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full
+                               bg-gray-100 text-gray-600" data-type="Red">Red</button>
+                <button class="filter-pill shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full
+                               bg-gray-100 text-gray-600" data-type="White">White</button>
+                <button class="filter-pill shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full
+                               bg-gray-100 text-gray-600" data-type="Rosé">Rosé</button>
+                <button class="filter-pill shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full
+                               bg-gray-100 text-gray-600" data-type="Sparkling">Sparkling</button>
+                <button class="filter-pill shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full
+                               bg-gray-100 text-gray-600" data-type="Dessert">Dessert</button>
+                <button class="filter-pill shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full
+                               bg-gray-100 text-gray-600" data-type="Orange">Orange</button>
+            </div>
+            <!-- Sort + count row -->
+            <div class="flex items-center justify-between">
+                <span id="cellarCountLabel" class="text-xs text-gray-400">0 wines</span>
+                <select id="sortSelect"
+                        class="text-xs border border-gray-200 rounded-md px-2 py-1.5 bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-red-900">
+                    <option value="newest">Newest first</option>
+                    <option value="oldest">Oldest first</option>
+                    <option value="producer-az">Producer A → Z</option>
+                    <option value="producer-za">Producer Z → A</option>
+                    <option value="vintage-desc">Vintage (newest)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Empty state -->
+        <div id="cellarEmpty" class="hidden text-center py-16 text-gray-400">
+            <p class="text-lg font-medium mb-1">No wines saved yet.</p>
+            <p class="text-sm">Switch to Scan to add your first bottle.</p>
+        </div>
+
+        <!-- Wine list -->
+        <div id="wineList" class="space-y-3"></div>
+
+        <!-- Load more -->
+        <button id="loadMoreBtn" class="hidden w-full mt-4 py-3 text-sm font-semibold text-red-900 border border-red-200 rounded-lg active:bg-red-50">
+            Load more
+        </button>
+
+    </div><!-- /cellarPanel -->
+
+    <!-- ── BOTTOM TAB BAR ────────────────────────────────────────────── -->
+    <nav class="tab-bar fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex z-40">
+        <button id="tabScan"
+                class="flex-1 flex flex-col items-center justify-center pt-2 gap-0.5 text-red-900">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0
+                         0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0
+                         0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0
+                         01-2-2V9z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span class="text-xs font-semibold">Scan</span>
+        </button>
+
+        <button id="tabCellar"
+                class="flex-1 flex flex-col items-center justify-center pt-2 gap-0.5 text-gray-400">
+            <div class="relative">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                </svg>
+                <!-- Wine count badge -->
+                <span id="cellarBadge"
+                      class="hidden absolute -top-1.5 -right-2 bg-red-900 text-white text-[10px] font-bold
+                             rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
+                    0
+                </span>
+            </div>
+            <span class="text-xs font-semibold">Cellar</span>
+        </button>
+    </nav>
+
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>

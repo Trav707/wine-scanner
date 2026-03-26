@@ -1,0 +1,25 @@
+{
+  "name": "Wine Scanner",
+  "short_name": "Wine Scanner",
+  "description": "Scan wine labels and build your cellar inventory",
+  "start_url": "/wine-scanner/",
+  "scope": "/wine-scanner/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f3f4f6",
+  "theme_color": "#7f1d1d",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
