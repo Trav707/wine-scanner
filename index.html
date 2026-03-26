@@ -15,12 +15,12 @@
     <link rel="manifest" href="/manifest.json">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <style>
-        /* Respect iPhone notch / Dynamic Island */
-        .safe-top { padding-top: max(env(safe-area-inset-top), 16px); }
+        /* Respect iPhone notch / Dynamic Island — !important beats Tailwind CDN p-4 */
+        .safe-top { padding-top: max(env(safe-area-inset-top), 16px) !important; }
         /* Respect iPhone home indicator */
         .tab-bar { padding-bottom: max(env(safe-area-inset-bottom), 8px); }
         /* Prevent content from hiding behind fixed tab bar + home indicator */
-        .scroll-content { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+        .scroll-content { padding-bottom: calc(80px + env(safe-area-inset-bottom)) !important; }
         /* Hide scrollbar on filter pill row */
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
